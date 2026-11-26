@@ -9,6 +9,7 @@ A staff time-tracking kiosk for a small medical practice (up to 10 employees), i
 ## How it works
 
 - **Staff board:** every employee has a card on the board. Tap your card, enter your 4-digit PIN, then tap **Kommen**, **Pause beginnen**, **Pause beenden** or **Gehen**.
+- **Choose the time when stamping:** a time picker opens with the current time, so employees can set the hour and minute themselves (for example if they started at 08:00 but reached the tablet at 08:12). Times that differ from the real time are marked for the practice lead and noted in the reports. This can be switched off in the settings.
 - **My month:** after logging in, each employee sees today's times, actual vs. target hours, overtime balance and remaining vacation days.
 - **Requests:** employees request vacation, report sick, request time off in lieu or ask for a time correction. Absences only count after the practice lead approves them.
 - **Admin area (PIN-protected):** live overview of who is present, approval of requests, correction of times with a required reason (every change is logged), staff management and settings.
@@ -45,6 +46,11 @@ On first start, choose **Mit Demo-Daten starten** to try the app with four sampl
 | `jspdf.umd.min.js`, `jspdf.plugin.autotable.min.js` | PDF export ([jsPDF](https://github.com/parallax/jsPDF), [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable), MIT) |
 | `logo.png`, `icon-192.png`, `icon-512.png` | Practice logo and app icons |
 | `docs/` | User manual, technical documentation and screenshots |
+
+## Changelog
+
+- **v1.1:** at the practice's request, employees can choose the clock time (hour and minute) when stamping. Chosen times are marked (✎) in the admin area, explained in the edit dialog and noted in the Excel/PDF reports. New setting to switch the feature off. User manual and documentation updated.
+- **v1.0:** first release.
 
 ## License
 

@@ -128,7 +128,7 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const today=()=>keyOf(new Date());
 
 /* ---------- state ---------- */
-const blank=()=>({ui:'de',settings:{practice:'Internistische Praxis Linda Pars Pour',address:'Frohmestraße 29-33, 22457 Hamburg',state:'HH',adminHash:'',empTimeout:30,adminTimeout:180,lastBackup:0},emps:{},days:{},reqs:[],audit:[]});
+const blank=()=>({ui:'de',settings:{practice:'Internistische Praxis Linda Pars Pour',address:'Frohmestraße 29-33, 22457 Hamburg',state:'HH',adminHash:'',empTimeout:30,adminTimeout:180,lastBackup:0,manualTime:true},emps:{},days:{},reqs:[],audit:[]});
 let S=blank(),mode='home',empId=null,adminTab='overview',month=today().slice(0,7),repEmp=null,idle=null,swReg=null;
 const T=(de,en)=>S.ui==='en'?en:de;
 const LOC=()=>S.ui==='en'?'en-GB':'de-DE';
@@ -235,7 +235,7 @@ function status(id){
   if(st==='done')return['out',T('Feierabend','Gone home')];
   return['out',T('Nicht da','Not in')];
 }
-const summary=d=>d&&d.ev&&d.ev.length?sorted(d.ev).map(e=>evName(e.t)+' '+e.at+(e.nd?'(+1)':'')).join(', '):'—';
+const summary=d=>d&&d.ev&&d.ev.length?sorted(d.ev).map(e=>evName(e.t)+' '+e.at+(e.nd?'(+1)':'')+(e.man?'✎':'')).join(', '):'—';
 function logAudit(id,k,before,after,reason){S.audit.unshift({ts:Date.now(),emp:id,date:k,before,after,reason});if(S.audit.length>2000)S.audit.length=2000}
 
 /* ---------- ui helpers ---------- */
@@ -331,7 +331,7 @@ function renderEmp(){
   </section>
   <div class="g2" style="gap:0 14px">
   <section class="card"><h3 style="margin-top:0">${T('Heute','Today')}</h3>
-   <ul class="tl">${evs.length?evs.map(x=>`<li><span>${evName(x.t)}</span><b class="num">${x.at}${x.nd?' (+1)':''}</b></li>`).join(''):`<li style="color:var(--mute)">${T('Noch nichts erfasst','Nothing recorded yet')}</li>`}</ul>
+   <ul class="tl">${evs.length?evs.map(x=>`<li><span>${evName(x.t)}${x.man?` <span class="tag pend">${T('angepasst','adjusted')}</span>`:''}</span><b class="num">${x.at}${x.nd?' (+1)':''}</b></li>`).join(''):`<li style="color:var(--mute)">${T('Noch nichts erfasst','Nothing recorded yet')}</li>`}</ul>
    <div class="kpi" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px"><div><b>${fmt(c.work)}</b><span>${T('Arbeitszeit','Worked')}</span></div><div><b>${fmt(c.brk)}</b><span>${T('Pause','Break')}</span></div><div><b>${fmt(i.target)}</b><span>${T('Soll','Target')}</span></div></div>
    <p class="note">${T('Fehler in deinen Zeiten? Stelle unten einen Korrekturantrag – die Praxisleitung korrigiert ihn.','Mistake in your times? Send a correction request below – the practice lead will fix it.')}</p></section>
   <section class="card"><h3 style="margin-top:0">${T('Mein Monat','My month')}</h3>
@@ -346,7 +346,27 @@ const fmtD=k=>parseKey(k).toLocaleDateString(LOC(),{day:'2-digit',month:'2-digit
 const fmtRange=r=>r.from===r.to?fmtD(r.from):fmtD(r.from)+' – '+fmtD(r.to);
 const reqTag=r=>r.status==='pending'?`<span class="tag pend">${T('offen','pending')}</span>`:r.status==='approved'?`<span class="tag">${T('genehmigt','approved')}</span>`:`<span class="tag miss">${T('abgelehnt','rejected')}</span>`;
 function punch(type){
-  const k=activeKey(empId),now=new Date(),e={t:type,at:hm(now)};if(k!==today())e.nd=true;
+  if(!S.settings.manualTime){doPunch(type,hm(new Date()));return}
+  const now=hm(new Date());
+  openDlg(`<h2>${evName(type)}</h2><p style="margin:0 0 10px">${T('Uhrzeit prüfen und bei Bedarf anpassen.','Check the time and adjust it if needed.')}</p>
+   <div class="f"><label for="p-time">${T('Uhrzeit (Stunde : Minute)','Time (hour : minute)')}</label><input type="time" id="p-time" value="${now}" step="60" style="font-size:28px;min-height:64px;text-align:center"></div>
+   <div class="row" style="gap:6px;margin-bottom:12px">${[-15,-5,-1,1,5].map(d=>`<button class="btn sm ghost" data-adj="${d}">${d>0?'+':''}${d} ${T('Min.','min')}</button>`).join('')}<button class="btn sm ghost" data-adj="now">${T('Jetzt','Now')}</button></div>
+   <p class="note">${T('Abweichungen von der tatsächlichen Uhrzeit werden für die Praxisleitung markiert.','Times that differ from the actual time are marked for the practice lead.')}</p>
+   <div class="row between"><button class="btn ghost" id="p-x">${T('Abbrechen','Cancel')}</button><button class="btn pri" id="p-ok">${T('Bestätigen','Confirm')}</button></div>`);
+  $('p-x').onclick=closeDlg;
+  $('sheet').querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{const v=b.dataset.adj;if(v==='now'){$('p-time').value=hm(new Date());return}let m=toMin($('p-time').value||hm(new Date()))+(+v);m=(m+1440)%1440;$('p-time').value=pad(Math.floor(m/60))+':'+pad(m%60)});
+  $('p-ok').onclick=()=>{
+    const at=$('p-time').value;if(!at){toast(T('Bitte Uhrzeit wählen','Please choose a time'));return}
+    const k=activeKey(empId),nd=k!==today(),newM=toMin(at)+(nd?1440:0),nowM=toMin(hm(new Date()))+(nd?1440:0);
+    if(newM>nowM+5){toast(T('Diese Uhrzeit liegt in der Zukunft','This time is in the future'));return}
+    const last=sorted((daysOf(empId)[k]||{}).ev).pop();
+    if(last&&newM<absM(last)){toast(T('Die Uhrzeit muss nach dem letzten Eintrag ('+last.at+') liegen','The time must be after the last entry ('+last.at+')'));return}
+    closeDlg();doPunch(type,at);
+  };
+}
+function doPunch(type,at){
+  const k=activeKey(empId),now=new Date(),real=hm(now),e={t:type,at};if(k!==today())e.nd=true;
+  if(at!==real){e.rec=real;if(Math.abs(toMin(at)-toMin(real))>2)e.man=true}
   const d=daysOf(empId)[k]||(daysOf(empId)[k]={ev:[],note:''});d.ev.push(e);d.updated=Date.now();save();
   const em=S.emps[empId],c=calc(empId,k);
   const msg=type==='in'?T('Willkommen, ','Welcome, ')+em.first+' – '+e.at:type==='out'?T('Schönen Feierabend, ','Have a nice evening, ')+em.first+'! '+T('Heute: ','Today: ')+fmt(c.work)+' '+T('Std.','h'):evName(type)+' – '+e.at;
@@ -413,7 +433,8 @@ function aTimes(){
   let html='';
   for(const g of groups){const has=g.soll||g.ist,d=g.ist-g.soll;html+=`<tr class="wk"><td colspan="4">${T('KW','Week')} ${g.w}</td><td class="num">${has?fmt(g.soll):''}</td><td class="num">${has?fmt(g.ist):''}</td><td class="num ${d>=0?'pos':'neg'}">${has?fmtS(d):''}</td></tr>`;
     for(const r of g.rows){const dt=parseKey(r.k),w=warnings(repEmp,r.k).length;
-      const tag=r.missing?`<span class="tag miss">${T('fehlt','missing')}</span>`:r.pend?`<span class="tag pend">${T(...REQ[r.pend.type])} ${T('offen','pending')}</span>`:r.type&&r.type!=='work'?`<span class="tag">${tn(r.type)}</span>`:'';
+      const man=((daysOf(repEmp)[r.k]||{}).ev||[]).some(e=>e.man);
+      const tag=(man?`<span class="tag pend" title="${T('Uhrzeit von Mitarbeitenden angepasst','Time adjusted by employee')}">✎</span> `:'')+(r.missing?`<span class="tag miss">${T('fehlt','missing')}</span>`:r.pend?`<span class="tag pend">${T(...REQ[r.pend.type])} ${T('offen','pending')}</span>`:r.type&&r.type!=='work'?`<span class="tag">${tn(r.type)}</span>`:'');
       html+=`<tr class="click${r.target?'':' we'}" data-edit="${repEmp}|${r.k}"><td>${dt.toLocaleDateString(LOC(),{weekday:'short',day:'2-digit',month:'2-digit'})}</td><td>${r.type==='work'?r.c.start+'–'+(r.c.end||'…'):''} ${tag}${w?' ⚠':''}</td><td class="num">${r.type==='work'&&r.c.brk?fmt(r.c.brk):''}</td><td>${esc(r.note)}</td><td class="num">${r.target?fmt(r.target):''}</td><td class="num"><b>${r.type||r.missing?fmt(r.ist):''}</b></td><td class="num ${r.diff>=0?'pos':'neg'}">${r.counted&&r.diff?fmtS(r.diff):''}</td></tr>`}}
   $('atab').innerHTML=`<section class="card"><div class="row between"><div class="row"><select id="t-emp" style="width:auto">${list.map(e=>`<option value="${e.id}"${e.id===repEmp?' selected':''}>${esc(fullName(e))}</option>`).join('')}</select><input type="month" id="t-m" value="${month}" style="width:auto"></div>
    <button class="btn sm" data-edit="${repEmp}|${today()}">${T('Tag bearbeiten / nachtragen','Edit / add a day')}</button></div>
@@ -423,7 +444,7 @@ function aTimes(){
    <p class="note">${T('Zeile anklicken zum Korrigieren. Jede Änderung wird mit Grund im Änderungsprotokoll gespeichert.','Click a row to correct it. Every change is saved with its reason in the change log.')}</p></section>`;
   $('t-emp').onchange=e=>{repEmp=e.target.value;render()};$('t-m').onchange=e=>{month=e.target.value||month;render()};
 }
-function evRow(e){return `<div class="ev"><select aria-label="${T('Art','Type')}">${Object.keys(EVN).map(k=>`<option value="${k}"${k===e.t?' selected':''}>${evName(k)}</option>`).join('')}</select><input type="time" value="${e.at}" aria-label="${T('Uhrzeit','Time')}"><label class="nd"><input type="checkbox"${e.nd?' checked':''}>+1</label><button class="btn bad sm" data-x aria-label="${T('Entfernen','Remove')}">✕</button></div>`}
+function evRow(e){return `<div class="ev" data-rec="${e.rec||''}" data-man="${e.man?1:''}" data-at0="${e.at}"><select aria-label="${T('Art','Type')}">${Object.keys(EVN).map(k=>`<option value="${k}"${k===e.t?' selected':''}>${evName(k)}</option>`).join('')}</select><input type="time" value="${e.at}" aria-label="${T('Uhrzeit','Time')}"><label class="nd"><input type="checkbox"${e.nd?' checked':''}>+1</label><button class="btn bad sm" data-x aria-label="${T('Entfernen','Remove')}">✕</button>${e.man?`<span class="note" style="grid-column:1/-1;margin:-4px 0 0">✎ ${T('Von Mitarbeitenden gewählt – tatsächlich gestempelt um ','Chosen by employee – actually stamped at ')}${e.rec}</span>`:''}</div>`}
 function editDay(id,k){
   const d=daysOf(id)[k]||{ev:[],note:''},before=summary(d);
   openDlg(`<h2>${T('Tag bearbeiten','Edit day')}</h2><p style="margin:0 0 10px">${esc(fullName(S.emps[id]))}</p>
@@ -439,7 +460,7 @@ function editDay(id,k){
   $('x-date').onchange=()=>{const v=$('x-date').value;if(v&&v!==k)editDay(id,v)};
   $('x-x').onclick=closeDlg;
   $('x-ok').onclick=()=>{const why=$('x-why').value.trim();if(!why){toast(T('Bitte Grund angeben','Please enter a reason'));$('x-why').focus();return}
-    const ev=[...$('x-evs').children].map(r=>{const o={t:r.querySelector('select').value,at:r.querySelector('input[type=time]').value};if(r.querySelector('input[type=checkbox]').checked)o.nd=true;return o}).filter(e=>e.at);
+    const ev=[...$('x-evs').children].map(r=>{const o={t:r.querySelector('select').value,at:r.querySelector('input[type=time]').value};if(r.querySelector('input[type=checkbox]').checked)o.nd=true;if(r.dataset.rec&&o.at===r.dataset.at0){o.rec=r.dataset.rec;if(r.dataset.man)o.man=true}return o}).filter(e=>e.at);
     const note=$('x-note').value.trim();if(ev.length||note)daysOf(id)[k]={ev,note,updated:Date.now()};else delete daysOf(id)[k];
     logAudit(id,k,before,summary(daysOf(id)[k]),why);save();closeDlg();render();toast(T('Gespeichert und protokolliert','Saved and logged'))};
 }
@@ -480,6 +501,7 @@ function aSettings(){
    <div class="g2"><div class="f"><label for="c-n">${T('Praxisname','Practice name')}</label><input id="c-n" value="${esc(st.practice)}"></div><div class="f"><label for="c-a">${T('Adresse','Address')}</label><input id="c-a" value="${esc(st.address)}"></div>
    <div class="f"><label for="c-s">${T('Bundesland (Feiertage)','State (public holidays)')}</label><select id="c-s">${Object.entries(STATES).map(([k,v])=>`<option value="${k}"${st.state===k?' selected':''}>${v}</option>`).join('')}</select></div>
    <div class="f"><label for="c-t">${T('Automatisch zurück zur Tafel nach (Sek.)','Back to board after (sec)')}</label><input id="c-t" type="number" min="10" max="300" value="${st.empTimeout}"></div></div>
+   <label class="row" style="gap:8px;margin:4px 0 12px"><input type="checkbox" id="c-man" style="width:20px;min-height:20px"${st.manualTime?' checked':''}> ${T('Mitarbeitende dürfen die Uhrzeit beim Stempeln selbst wählen (Abweichungen werden markiert)','Employees may choose the time when stamping (differences are marked)')}</label>
    <button class="btn pri sm" id="c-save">${T('Speichern','Save')}</button></section>
    <section class="card"><h2>${T('Verwaltungs-PIN ändern','Change admin PIN')}</h2><div class="g2"><div class="f"><label for="c-p1">${T('Neue PIN','New PIN')}</label><input id="c-p1" type="password" inputmode="numeric" maxlength="4"></div><div class="f"><label for="c-p2">${T('Wiederholen','Repeat')}</label><input id="c-p2" type="password" inputmode="numeric" maxlength="4"></div></div><button class="btn sm" id="c-pin">${T('PIN ändern','Change PIN')}</button></section>
    <section class="card"><h2>${T('Sicherung','Backup')}</h2><p>${T('Alle Daten liegen nur auf diesem Gerät. Bitte regelmäßig (z. B. wöchentlich) eine Sicherung auf einem USB-Stick oder Praxis-Laufwerk speichern.','All data is stored on this device only. Please save a backup regularly (e.g. weekly) to a USB stick or practice drive.')}</p>
@@ -487,7 +509,7 @@ function aSettings(){
    <p class="note">${T('Letzte Sicherung: ','Last backup: ')}${st.lastBackup?new Date(st.lastBackup).toLocaleString(LOC()):T('noch keine','none yet')}</p></section>
    <section class="card"><h2>${T('Änderungsprotokoll','Change log')}</h2>${S.audit.length?`<div class="scroll"><table><thead><tr><th>${T('Zeitpunkt','When')}</th><th>${T('Mitarbeitende','Staff')}</th><th>${T('Tag','Day')}</th><th>${T('Vorher','Before')}</th><th>${T('Nachher','After')}</th><th>${T('Grund','Reason')}</th></tr></thead><tbody>${S.audit.slice(0,60).map(a=>`<tr><td class="num">${new Date(a.ts).toLocaleString(LOC(),{dateStyle:'short',timeStyle:'short'})}</td><td>${esc(S.emps[a.emp]?fullName(S.emps[a.emp]):'?')}</td><td class="num">${fmtD(a.date)}</td><td>${esc(a.before)}</td><td>${esc(a.after)}</td><td>${esc(a.reason)}</td></tr>`).join('')}</tbody></table></div>`:`<p>${T('Noch keine Änderungen.','No changes yet.')}</p>`}</section>
    <section class="card"><h2>${T('Alle Daten löschen','Delete all data')}</h2><p>${T('Löscht Mitarbeitende, Zeiten und Anträge auf diesem Gerät. Vorher eine Sicherung speichern!','Deletes staff, times and requests on this device. Save a backup first!')}</p><button class="btn bad sm" id="c-wipe">${T('Alles löschen','Delete everything')}</button></section>`;
-  $('c-save').onclick=()=>{st.practice=$('c-n').value.trim()||st.practice;st.address=$('c-a').value.trim();st.state=$('c-s').value;st.empTimeout=Math.max(10,+$('c-t').value||30);save();render();toast(T('Gespeichert','Saved'))};
+  $('c-save').onclick=()=>{st.practice=$('c-n').value.trim()||st.practice;st.address=$('c-a').value.trim();st.state=$('c-s').value;st.empTimeout=Math.max(10,+$('c-t').value||30);st.manualTime=$('c-man').checked;save();render();toast(T('Gespeichert','Saved'))};
   $('c-pin').onclick=async()=>{const a=$('c-p1').value;if(!/^\d{4}$/.test(a)||a!==$('c-p2').value){toast(T('PINs prüfen (4 Ziffern, gleich)','Check PINs (4 digits, matching)'));return}st.adminHash=await hash('admin:'+a);st.demo=false;save();render();toast(T('PIN geändert','PIN changed'))};
   $('c-bk').onclick=()=>{st.lastBackup=Date.now();save();saveFile('Zeiterfassung_Sicherung_'+today()+'.json',new Blob([JSON.stringify(S)],{type:'application/json'}));render();toast(T('Sicherung gespeichert','Backup saved'))};
   $('c-rs').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!o.settings||!o.emps)throw 0;S=Object.assign(blank(),o);save();render();toast(T('Sicherung geladen','Backup loaded'))}catch(e){toast(T('Ungültige Datei','Invalid file'))}};
@@ -507,6 +529,8 @@ function aReports(){
   const ids=()=>list.map(e=>e.id),one=()=>[$('r-e').value];
   $('r-x').onclick=()=>exportXlsx(ids());$('r-p').onclick=()=>exportPdf(ids());$('r-x1').onclick=()=>exportXlsx(one());$('r-p1').onclick=()=>exportPdf(one());
 }
+let repId=null;
+const manNote=(id,k)=>{const m=((daysOf(id)[k]||{}).ev||[]).filter(e=>e.man);return m.length?'Zeit selbst gewählt: '+m.map(e=>EVN[e.t][0]+' '+e.at+' (gestempelt '+e.rec+')').join(', '):''};
 const C={navy:'154194',blue:'2581C4',ink:'2B2B2A',text:'575756',mute:'8A8A88',line:'C9D2DF',alt:'F6F8FB',we:'EEF1F5',week:'E8F0FA',white:'FFFFFF',red:'B3261E',green:'1F7A4A',soft:'F4F7FB'};
 function fileBase(ids){return ids.length===1?fullName(S.emps[ids[0]]).replace(/\s+/g,'_'):'Praxis_Alle'}
 function exportXlsx(ids){
@@ -546,7 +570,7 @@ function exportXlsx(ids){
       if(x.counted){a.soll+=x.target;a.ist+=x.ist}if(x.type==='work'){a.g+=x.c.gross;a.b+=x.c.brk}
       const dt=parseKey(x.k),f={fgColor:{rgb:!x.target?C.we:(+x.k.slice(8)%2?C.white:C.alt)}},isW=x.type==='work',st=(o={})=>Object.assign({fill:f,border:box,font:font({sz:9,color:{rgb:!x.target&&!x.type?C.mute:C.ink}}),alignment:{horizontal:'center',vertical:'center'}},o);
       const art=x.missing?'fehlt':x.pend?TYPES[x.pend.type]?TYPES[x.pend.type][0]+' (beantragt)':'':x.type?TYPES[x.type][0]:'';
-      rows.push([cell(dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}),st()),cell(dt.toLocaleDateString('de-DE',{weekday:'short'}),st()),cell(art,st({font:font({sz:9,bold:x.missing,color:{rgb:x.missing?C.red:C.ink}})})),cell(isW?x.c.start:'',st()),cell(isW?x.c.breaks.join(', '):'',st()),cell(isW?x.c.end:'',st()),cell(isW&&x.c.brk?fmt(x.c.brk):'',st()),cell(isW?fmt(x.c.gross):'',st()),cell(x.target?fmt(x.target):'',st()),cell(x.type||x.missing?fmt(x.ist):'',st({font:font({sz:9,bold:true})})),cell(x.counted&&x.diff?fmtS(x.diff):'',st({font:font({sz:9,bold:true,color:{rgb:x.diff<0?C.red:C.green}})})),cell([x.hol&&!isW?x.hol:'',x.note].filter(Boolean).join(' · '),st({alignment:{horizontal:'left',vertical:'center',wrapText:true}}))]);heights.push(16)}
+      rows.push([cell(dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}),st()),cell(dt.toLocaleDateString('de-DE',{weekday:'short'}),st()),cell(art,st({font:font({sz:9,bold:x.missing,color:{rgb:x.missing?C.red:C.ink}})})),cell(isW?x.c.start:'',st()),cell(isW?x.c.breaks.join(', '):'',st()),cell(isW?x.c.end:'',st()),cell(isW&&x.c.brk?fmt(x.c.brk):'',st()),cell(isW?fmt(x.c.gross):'',st()),cell(x.target?fmt(x.target):'',st()),cell(x.type||x.missing?fmt(x.ist):'',st({font:font({sz:9,bold:true})})),cell(x.counted&&x.diff?fmtS(x.diff):'',st({font:font({sz:9,bold:true,color:{rgb:x.diff<0?C.red:C.green}})})),cell([x.hol&&!isW?x.hol:'',manNote(id,x.k),x.note].filter(Boolean).join(' · '),st({alignment:{horizontal:'left',vertical:'center',wrapText:true}}))]);heights.push(16)}
     wrow();
     const ts=(o={})=>Object.assign({font:font({bold:true,sz:10}),fill:{fgColor:{rgb:C.soft}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:C.navy}},bottom:{style:'medium',color:{rgb:C.navy}},left:bd(),right:bd()}},o);
     const RI=rows.length,r=Array.from({length:NC},()=>cell('',ts()));r[0]=cell('Summe',ts({alignment:{horizontal:'left',vertical:'center',indent:1}}));r[2]=cell(s.work+' Arbeitstage',ts());r[6]=cell(fmt(s.brk),ts());r[7]=cell(fmt(s.gross),ts());r[8]=cell(fmt(s.soll),ts());r[9]=cell(fmt(s.ist),ts({font:font({bold:true,sz:11,color:{rgb:C.navy}})}));r[10]=cell(fmtS(s.diff),ts({font:font({bold:true,sz:10,color:{rgb:s.diff<0?C.red:C.green}})}));merges.push([RI,0,RI,1],[RI,2,RI,5]);rows.push(r);heights.push(22);
@@ -608,7 +632,7 @@ function exportPdf(ids){
     for(const x of s.rows){const w=isoWeek(x.k);if(w!==wk){flush();wk=w;a={soll:0,ist:0,g:0,b:0}}
       if(x.counted){a.soll+=x.target;a.ist+=x.ist}if(x.type==='work'){a.g+=x.c.gross;a.b+=x.c.brk}
       const dt=parseKey(x.k),isW=x.type==='work';
-      body.push([dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}),dt.toLocaleDateString('de-DE',{weekday:'short'}),x.missing?'fehlt':x.pend?(TYPES[x.pend.type]?TYPES[x.pend.type][0]+' (beantragt)':''):x.type?TYPES[x.type][0]:'',isW?x.c.start:'',isW?x.c.breaks.join(', '):'',isW?x.c.end:'',isW&&x.c.brk?fmt(x.c.brk):'',isW?fmt(x.c.gross):'',x.target?fmt(x.target):'',x.type||x.missing?fmt(x.ist):'',x.counted&&x.diff?fmtS(x.diff):'',[x.hol&&!isW?x.hol:'',x.note].filter(Boolean).join(' · ')]);
+      body.push([dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}),dt.toLocaleDateString('de-DE',{weekday:'short'}),x.missing?'fehlt':x.pend?(TYPES[x.pend.type]?TYPES[x.pend.type][0]+' (beantragt)':''):x.type?TYPES[x.type][0]:'',isW?x.c.start:'',isW?x.c.breaks.join(', '):'',isW?x.c.end:'',isW&&x.c.brk?fmt(x.c.brk):'',isW?fmt(x.c.gross):'',x.target?fmt(x.target):'',x.type||x.missing?fmt(x.ist):'',x.counted&&x.diff?fmtS(x.diff):'',[x.hol&&!isW?x.hol:'',manNote(id,x.k),x.note].filter(Boolean).join(' · ')]);
       meta.push({we:!x.target,miss:x.missing,neg:x.diff<0})}
     flush();
     doc.autoTable(Object.assign({},base,{startY:44,showFoot:'lastPage',head:[['Datum','Tag','Art','Beginn','Pausen','Ende','Pause ges.','Anwesenheit','Soll','Ist','+/-','Bemerkung']],body,
