@@ -2,7 +2,7 @@
 
 **Internistische Praxis Linda Pars Pour** · Frohmestraße 29-33, 22457 Hamburg
 
-Version 1.0 · November 2026
+Version 1.1 · November 2026
 
 ---
 
@@ -115,19 +115,33 @@ Die Startseite zeigt für jede Person eine Karte mit dem aktuellen Status.
     | **Pause beenden** | Wenn die Pause vorbei ist |
     | **Gehen** | Bei Arbeitsende |
 
-4. Eine kurze Bestätigung erscheint, z. B. „Willkommen, Anna – 07:52“. Danach kehrt die App **automatisch zur Stempeltafel** zurück.
+4. Es öffnet sich ein Fenster mit der **aktuellen Uhrzeit**. Wenn nötig, die Uhrzeit anpassen (siehe 3.3), dann **Bestätigen** drücken.
+
+    ![Uhrzeit wählen](screenshots/03b-uhrzeit-waehlen.png)
+
+5. Eine kurze Bestätigung erscheint, z. B. „Willkommen, Anna – 07:52“. Danach kehrt die App **automatisch zur Stempeltafel** zurück.
 
 Es sind immer nur die Knöpfe aktiv, die gerade sinnvoll sind (z. B. kein „Gehen“, bevor man „Kommen“ gedrückt hat).
 
-### 3.3 Mehrere Pausen
+### 3.3 Uhrzeit selbst wählen
+
+Beim Stempeln kann die Uhrzeit **selbst eingestellt** werden, z. B. wenn man schon um 08:00 angefangen hat, aber erst um 08:12 zum Tablet kommt.
+
+- Im Feld **Uhrzeit** Stunde und Minute einstellen, oder die Knöpfe **-15 / -5 / -1 / +1 / +5 Min.** benutzen. **Jetzt** setzt wieder die aktuelle Uhrzeit.
+- Die Uhrzeit darf **nicht in der Zukunft** liegen und muss **nach dem letzten Eintrag** des Tages liegen.
+- Weicht die gewählte Zeit von der tatsächlichen Uhrzeit ab, wird das für die Praxisleitung **markiert** (✎) und im Bericht vermerkt. Unter **Heute** steht dann „angepasst“.
+
+> Diese Funktion kann die Praxisleitung unter **Einstellungen** ein- oder ausschalten (Kapitel 13.1).
+
+### 3.4 Mehrere Pausen
 
 Es können beliebig viele Pausen pro Tag gestempelt werden. Alle Pausen werden addiert und von der Arbeitszeit abgezogen.
 
-### 3.4 Nachtdienst und Dienst über Mitternacht
+### 3.5 Nachtdienst und Dienst über Mitternacht
 
 Wer nach Mitternacht (bis 12 Uhr mittags) „Gehen“ stempelt und am Vortag „Kommen“ gestempelt hat, wird automatisch dem **Vortag** zugeordnet. Die Uhrzeit erscheint dann mit „(+1)“.
 
-### 3.5 Datenschutz am Empfang
+### 3.6 Datenschutz am Empfang
 
 - Die eigene PIN **niemandem verraten**.
 - Nach dem Stempeln kehrt die App selbst zur Tafel zurück. Ansonsten **Fertig** drücken.
@@ -301,6 +315,7 @@ Oben stehen **Ist**, **Soll**, **Differenz im Monat** und **Saldo gesamt**. Die 
 | **Urlaub / Krank / Feiertag** | Genehmigte Abwesenheit oder gesetzlicher Feiertag |
 | **… offen** (orange) | Antrag für diesen Tag wartet auf Entscheidung |
 | ⚠ | Hinweis nach dem Arbeitszeitgesetz (Pausen, Höchstarbeitszeit, Ruhezeit) |
+| ✎ | Die Uhrzeit wurde von der/dem Mitarbeitenden beim Stempeln selbst gewählt |
 | Grauer Hintergrund | Tag ohne Sollstunden (z. B. Wochenende) |
 
 ### 10.3 Einen Tag korrigieren oder nachtragen
@@ -315,6 +330,14 @@ Oben stehen **Ist**, **Soll**, **Differenz im Monat** und **Saldo gesamt**. Die 
 ![Tag bearbeiten](screenshots/14-tag-bearbeiten.png)
 
 Jede Änderung wird mit Zeitpunkt, alten und neuen Werten und Grund im **Änderungsprotokoll** gespeichert (Kapitel 13.4). So bleibt jederzeit nachvollziehbar, was korrigiert wurde.
+
+### 10.4 Selbst gewählte Uhrzeiten prüfen
+
+Hat jemand beim Stempeln eine andere Uhrzeit gewählt, zeigt die Tabelle **✎**. Im Fenster **Tag bearbeiten** steht unter dem Eintrag, wann **tatsächlich** gestempelt wurde.
+
+![Angepasste Uhrzeit](screenshots/14b-angepasste-zeit.png)
+
+Im Excel- und PDF-Bericht erscheint in der Spalte **Bemerkung** z. B. „Zeit selbst gewählt: Kommen 08:00 (gestempelt 08:12)“.
 
 ---
 
@@ -399,6 +422,8 @@ Bei der Person **Bearbeiten** drücken, Werte ändern, **Speichern**.
 ### 13.1 Praxisdaten
 Praxisname, Adresse, **Bundesland** (bestimmt die Feiertage) und die Zeit, nach der die App zur Stempeltafel zurückkehrt.
 
+**Uhrzeit beim Stempeln selbst wählen:** Ist der Haken gesetzt (Standard), können Mitarbeitende die Uhrzeit beim Stempeln anpassen (Kapitel 3.3). Ohne Haken wird immer die aktuelle Uhrzeit gestempelt.
+
 ### 13.2 Verwaltungs-PIN ändern
 Neue PIN zweimal eingeben → **PIN ändern**.
 
@@ -436,7 +461,7 @@ Oben rechts **DE** oder **EN** wählen. Die Berichte bleiben auf Deutsch.
 
 **Am Monatsende**
 
-- [ ] Reiter **Zeiten**: für jede Person die Markierungen **fehlt** und **⚠** prüfen und klären.
+- [ ] Reiter **Zeiten**: für jede Person die Markierungen **fehlt**, **⚠** und **✎** prüfen und klären.
 - [ ] Alle Zeitkorrektur-Anträge erledigen.
 - [ ] Reiter **Berichte**: Monat wählen, **PDF – alle Mitarbeitenden** und **Excel – alle Mitarbeitenden** erstellen.
 - [ ] PDF-Seiten unterschreiben lassen und ablegen. Excel an Lohnbuchhaltung bzw. Steuerbüro geben.

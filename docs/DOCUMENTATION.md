@@ -1,6 +1,6 @@
 # Technical Documentation – Praxis Zeiterfassung
 
-Version 1.0 · November 2026 · Author: Ario Samani
+Version 1.1 · November 2026 · Author: Ario Samani
 
 This document describes how the staff time-tracking app for *Internistische Praxis Linda Pars Pour* (Hamburg) is built, how it calculates working time, and how to deploy, operate and maintain it. For step-by-step instructions for staff and the practice lead, see the German user manual: [Benutzerhandbuch](Benutzerhandbuch.md).
 
@@ -71,6 +71,7 @@ All data is stored as a single JSON object under the `localStorage` key `praxis-
     adminHash,                    // SHA-256 hash of the admin PIN
     empTimeout: 30,               // seconds until the employee panel closes
     adminTimeout: 180,            // seconds until the admin area closes
+    manualTime: true,             // employees may choose the time when stamping
     lastBackup, demo
   },
   emps: {                         // employees by id
@@ -80,7 +81,8 @@ All data is stored as a single JSON object under the `localStorage` key `praxis-
               trackFrom: "YYYY-MM-DD", active, pinHash }
   },
   days: {                         // punches per employee and date
-    "<id>": { "YYYY-MM-DD": { ev: [ { t: "in"|"break"|"back"|"out", at: "HH:MM", nd?: true } ],
+    "<id>": { "YYYY-MM-DD": { ev: [ { t: "in"|"break"|"back"|"out", at: "HH:MM", nd?: true,
+                                      rec?: "HH:MM", man?: true } ],
                               note, updated } }
   },
   reqs: [ { id, emp, type: "vac"|"sick"|"comp"|"fix", from, to, note,
@@ -89,7 +91,7 @@ All data is stored as a single JSON object under the `localStorage` key `praxis-
 }
 ```
 
-`nd: true` marks a punch after midnight that belongs to the previous day's shift.
+`nd: true` marks a punch after midnight that belongs to the previous day's shift. `rec` stores the real device time when the employee chose a different time; `man: true` marks a difference of more than 2 minutes.
 
 ---
 
@@ -135,10 +137,20 @@ If an employee has an open shift from yesterday and today has no punches yet, pu
 ### 6.1 Clocking
 Board → tap card → PIN (4 digits, hashed and compared) → buttons that are valid for the current state (`off → in → break ↔ back → out`). After a punch the app shows a confirmation and returns to the board.
 
-### 6.2 Requests and approval
+### 6.2 Employee-chosen times (v1.1)
+Requested by the practice: when an employee taps a stamp button, a time picker opens with the current time. The employee can set hour and minute (or use -15/-5/-1/+1/+5 minute buttons). Rules:
+- the time may not be more than 5 minutes in the future,
+- it must not be earlier than the last punch of the same shift,
+- the real device time is kept in `rec`; differences over 2 minutes set `man` and are shown as ✎ in the admin area, explained in the edit dialog and noted in the Excel/PDF reports ("Zeit selbst gewählt: … (gestempelt …)").
+
+The practice lead can switch this off in Settings (`manualTime: false`); then the current time is always used.
+
+![Choose time](screenshots/03b-uhrzeit-waehlen.png)
+
+### 6.3 Requests and approval
 Employees create requests (`pending`). The admin approves or rejects them with an optional comment. The admin can also enter sick leave or vacation directly (`approved` at once). Time-correction requests (`fix`) are reminders: the admin opens the day, corrects it and marks the request as done.
 
-### 6.3 Corrections and audit log
+### 6.4 Corrections and audit log
 Only the admin can edit times. Every save requires a reason and writes an audit entry with the before/after summary.
 
 ![Edit day](screenshots/14-tag-bearbeiten.png)
@@ -222,3 +234,10 @@ Tested in Chromium (desktop and tablet viewport sizes). Designed for current Chr
 | `docs/Benutzerhandbuch.md`, `docs/Benutzerhandbuch.pdf` | German user manual |
 | `docs/DOCUMENTATION.md` | This document |
 | `docs/screenshots/` | Screenshots used in the documentation |
+
+## 14. Changelog
+
+| Version | Changes |
+|---|---|
+| 1.1 | Employees can choose the clock time when stamping (requested by the practice); chosen times are marked for the admin and noted in reports; setting to switch it off |
+| 1.0 | First release |
